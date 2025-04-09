@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stupid Dice Game - Casino Deluxe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['"Cinzel Decorative"', 'serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', 'sans-serif';
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1f2937;
+            background-image: radial-gradient(circle, #4b5563, #1f2937);
+            overflow-x: hidden;
+        }
+        .game-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            border: 4px solid #facc15;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06), 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .number-button {
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, border-color 0.2s;
+            background-color: #e5e7eb;
+            border: 2px solid #9ca3af;
+        }
+        .number-button:hover:not(:disabled) {
+             background-color: #d1d5db;
+             border-color: #6b7280;
+        }
+        .number-button.selected {
+            background-color: #facc15;
+            color: #1f2937;
+            transform: scale(1.1);
+            border-color: #eab308;
+            font-weight: bold;
+        }
+
+        /* --- 3D Dice Styles --- */
+        .scene {
+            width: 5rem;
+            height: 5rem;
+            perspective: 800px;
+            margin: 1.5rem auto;
+        }
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            -webkit-transform-style: preserve-3d;
+            /* Adjustment: Increased transition duration for more rolling time */
+            transition: transform 1.5s cubic-bezier(0.45, 0.05, 0.55, 0.95); /* Ease in/out */
+            transform: translateZ(-2.5rem);
+        }
+        .face {
+            position: absolute;
+            width: 5rem;
+            height: 5rem;
+            border: 2px solid #facc15;
+            border-radius: 0.375rem;
+            background-color: #15803d;
+            color: white;
+            font-size: 3rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            overflow: hidden;
+        }
+        .front  { transform: rotateY(  0deg) translateZ(2.5rem); }
+        .back   { transform: rotateY(180deg) translateZ(2.5rem); }
+        .right  { transform: rotateY( 90deg) translateZ(2.5rem); }
+        .left   { transform: rotateY(-90deg) translateZ(2.5rem); }
+        .top    { transform: rotateX( 90deg) translateZ(2.5rem); }
+        .bottom { transform: rotateX(-90deg) translateZ(2.5rem); }
+
+        /* Classes to rotate the cube to show a specific face */
+        .show-front  { transform: translateZ(-2.5rem) rotateX(   0deg) rotateY(   0deg); }
+        .show-back   { transform: translateZ(-2.5rem) rotateX(   0deg) rotateY( 180deg); }
+        .show-right  { transform: translateZ(-2.5rem) rotateX(   0deg) rotateY(  90deg); }
+        .show-left   { transform: translateZ(-2.5rem) rotateX(   0deg) rotateY( -90deg); }
+        .show-top    { transform: translateZ(-2.5rem) rotateX( -90deg) rotateY(   0deg); }
+        .show-bottom { transform: translateZ(-2.5rem) rotateX(  90deg) rotateY(   0deg); }
+        /* --- End 3D Dice Styles --- */
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-image: none !important;
+            transform: none !important;
+        }
+        input:disabled {
+           background-color: #e5e7eb;
+           cursor: not-allowed;
+           opacity: 0.7;
+        }
+        #highScoreList li {
+            background-color: #f3f4f6;
+            margin-bottom: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            text-align: left;
+            color: #374151;
+            border-left: 3px solid #facc15;
+        }
+         #highScoreList li:nth-child(odd) {
+            background-color: #e5e7eb;
+        }
+        .message-win { color: #22c55e; font-weight: bold; }
+        .message-lose { color: #ef4444; font-weight: bold; }
+        .message-info { color: #3b82f6; }
+        .message-gameover { color: #ef4444; font-weight: bold; font-size: 1.1em; }
+        .message-error { color: #f97316; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-4xl font-heading font-bold mb-6 text-amber-500 tracking-wide">Stupid Dice</h1>
+
+        <div class="mb-4 text-xl text-gray-800 font-semibold">
+            <span>Money: $</span><span id="moneyDisplay">100</span>
+        </div>
+        <div class="mb-4 text-lg text-gray-600">
+            <span>Session High: $</span><span id="sessionHighDisplay">100</span>
+        </div>
+
+        <div class="mb-4">
+            <label for="wagerInput" class="block text-sm font-medium text-gray-700 mb-1">Place Your Wager ($1 - $<span id="maxWagerDisplay">100</span>):</label>
+            <input type="number" id="wagerInput" min="1" value="10" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="mb-5">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Choose Your Number:</label>
+            <div id="numberSelection" class="flex justify-center space-x-2">
+                <button data-number="1" class="number-button w-10 h-10 rounded-md">1</button>
+                <button data-number="2" class="number-button w-10 h-10 rounded-md">2</button>
+                <button data-number="3" class="number-button w-10 h-10 rounded-md">3</button>
+                <button data-number="4" class="number-button w-10 h-10 rounded-md">4</button>
+                <button data-number="5" class="number-button w-10 h-10 rounded-md">5</button>
+                <button data-number="6" class="number-button w-10 h-10 rounded-md">6</button>
+            </div>
+        </div>
+
+        <button id="rollButton" class="w-full bg-gradient-to-b from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-bold py-3 px-4 rounded-md mb-4 transition duration-150 ease-in-out shadow-lg transform hover:scale-105">
+            Roll Dice!
+        </button>
+
+        <button id="newGameButton" class="w-full bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-bold py-3 px-4 rounded-md mb-4 transition duration-150 ease-in-out shadow-lg transform hover:scale-105 hidden">
+            New Game
+        </button>
+
+        <div class="scene" aria-label="Dice display">
+            <div id="diceCube" class="cube show-front">
+                <div class="face front">⚀</div>
+                <div class="face back">⚅</div>
+                <div class="face right">⚁</div>
+                <div class="face left">⚄</div>
+                <div class="face top">⚂</div>
+                <div class="face bottom">⚃</div>
+            </div>
+        </div>
+
+        <div id="messageArea" class="min-h-[2em] mb-4 text-lg font-semibold">
+            Place your bet and pick a number!
+        </div>
+
+        <div class="mt-6 border-t border-gray-300 pt-4">
+            <h2 class="text-xl font-semibold mb-2 text-amber-500">High Water Marks</h2>
+            <ol id="highScoreList" class="list-decimal list-inside text-gray-600 max-h-40 overflow-y-auto">
+                <li>Loading...</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // --- Constants ---
+        const STARTING_MONEY = 100;
+        const MAX_HIGH_SCORES = 10;
+        const HIGH_SCORE_KEY = 'stupidDiceHighScores';
+        const CSS_TRANSITION_DURATION = 1500; // ms - MUST match CSS transition duration!
+
+        // --- DOM Elements ---
+        const moneyDisplay = document.getElementById('moneyDisplay');
+        const sessionHighDisplay = document.getElementById('sessionHighDisplay');
+        const maxWagerDisplay = document.getElementById('maxWagerDisplay');
+        const wagerInput = document.getElementById('wagerInput');
+        const numberSelectionContainer = document.getElementById('numberSelection');
+        const numberButtons = numberSelectionContainer.querySelectorAll('.number-button');
+        const rollButton = document.getElementById('rollButton');
+        const newGameButton = document.getElementById('newGameButton');
+        const diceCube = document.getElementById('diceCube');
+        const messageArea = document.getElementById('messageArea');
+        const highScoreList = document.getElementById('highScoreList');
+
+        // --- Game State Variables ---
+        let currentMoney = STARTING_MONEY;
+        let sessionHighWaterMark = STARTING_MONEY;
+        let selectedNumber = null;
+        let currentWager = 0;
+        let highScores = [];
+        let isGameOver = false;
+        let isRolling = false; // Critical flag to prevent overlaps
+
+        // --- Mapping Roll Result to CSS Class ---
+        const rollToClass = {
+            1: 'show-front', 2: 'show-right', 3: 'show-top',
+            4: 'show-bottom', 5: 'show-left', 6: 'show-back'
+        };
+
+        // --- Functions --- (load/save/sort/display high scores, updateDisplay, setMessage, handleNumberSelection, validateWager, endGame, startNewGame remain largely the same)
+        function loadHighScores() {
+            const storedScores = localStorage.getItem(HIGH_SCORE_KEY);
+            highScores = [];
+            if (storedScores) {
+                try {
+                    let parsedScores = JSON.parse(storedScores);
+                    if (Array.isArray(parsedScores)) {
+                         highScores = parsedScores
+                            .map(item => (typeof item === 'number' ? { score: item } : item))
+                            .filter(item => typeof item === 'object' && item !== null && typeof item.score === 'number' && !isNaN(item.score));
+                    }
+                } catch (e) { console.error("Error parsing high scores:", e); }
+            }
+            sortAndTrimHighScores();
+            displayHighScores();
+        }
+        function saveHighScores() {
+           const scoresToSave = highScores.map(item => item.score);
+           localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(scoresToSave));
+        }
+        function sortAndTrimHighScores() {
+            highScores.sort((a, b) => b.score - a.score);
+            if (highScores.length > MAX_HIGH_SCORES) {
+                highScores = highScores.slice(0, MAX_HIGH_SCORES);
+            }
+        }
+        function displayHighScores() {
+            highScoreList.innerHTML = '';
+            if (highScores.length === 0) {
+                highScoreList.innerHTML = '<li class="text-gray-500 italic border-l-0">No high scores yet!</li>';
+            } else {
+                highScores.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = `${index + 1}. $${item.score.toLocaleString()}`;
+                    highScoreList.appendChild(li);
+                });
+            }
+        }
+        function updateDisplay() {
+            moneyDisplay.textContent = currentMoney.toLocaleString();
+            sessionHighDisplay.textContent = sessionHighWaterMark.toLocaleString();
+            maxWagerDisplay.textContent = currentMoney.toLocaleString();
+            wagerInput.max = currentMoney;
+
+            const currentWagerValue = parseInt(wagerInput.value);
+            if (currentMoney <= 0) { wagerInput.value = 0; }
+            else if (currentWagerValue > currentMoney) { wagerInput.value = currentMoney; }
+            else if (currentWagerValue < 1 && currentMoney > 0) { wagerInput.value = 1; }
+
+            const disableControls = isGameOver || isRolling;
+            rollButton.disabled = disableControls;
+            wagerInput.disabled = disableControls;
+            numberButtons.forEach(button => button.disabled = disableControls);
+
+            rollButton.classList.toggle('hidden', isGameOver);
+            newGameButton.classList.toggle('hidden', !isGameOver);
+        }
+        function setMessage(text, type = 'default') {
+             messageArea.textContent = text;
+             messageArea.className = 'min-h-[2em] mb-4 text-lg font-semibold';
+             switch (type) {
+                 case 'info': messageArea.classList.add('message-info'); break;
+                 case 'win': messageArea.classList.add('message-win'); break;
+                 case 'lose': messageArea.classList.add('message-lose'); break;
+                 case 'error': messageArea.classList.add('message-error'); break;
+                 case 'gameover': messageArea.classList.add('message-gameover'); break;
+             }
+        }
+        function handleNumberSelection(event) {
+            if (isGameOver || isRolling || !event.target.matches('.number-button')) return;
+            const button = event.target;
+            selectedNumber = parseInt(button.dataset.number);
+            numberButtons.forEach(btn => btn.classList.remove('selected'));
+            button.classList.add('selected');
+            setMessage(`Selected number: ${selectedNumber}. Ready to roll!`, 'info');
+        }
+        function validateWager() {
+            let wagerValue = parseInt(wagerInput.value);
+            if (currentMoney <= 0) { wagerInput.value = 0; currentWager = 0; return false; }
+            if (isNaN(wagerValue) || wagerValue < 1) { wagerValue = 1; }
+            else if (wagerValue > currentMoney) { wagerValue = currentMoney; }
+            wagerInput.value = wagerValue;
+            currentWager = wagerValue;
+            return currentWager > 0;
+        }
+        function endGame() {
+            isGameOver = true;
+            isRolling = false; // Ensure flag is cleared
+            setMessage(`Game Over! Session high: $${sessionHighWaterMark.toLocaleString()}.`, 'gameover');
+            if (sessionHighWaterMark > STARTING_MONEY) {
+                 highScores.push({ score: sessionHighWaterMark });
+                 sortAndTrimHighScores();
+                 saveHighScores();
+                 displayHighScores();
+            }
+            updateDisplay();
+        }
+        function startNewGame() {
+            isGameOver = false;
+            isRolling = false;
+            currentMoney = STARTING_MONEY;
+            sessionHighWaterMark = STARTING_MONEY;
+            selectedNumber = null;
+            currentWager = 0;
+            wagerInput.value = Math.max(1, Math.min(10, STARTING_MONEY));
+            setMessage('Place your bet and pick a number!', 'default');
+            numberButtons.forEach(btn => btn.classList.remove('selected'));
+
+            // Reset cube to initial state (show face 1) without transition
+            diceCube.style.transition = 'none'; // Disable transition
+            diceCube.className = 'cube show-front'; // Set class
+            diceCube.offsetHeight; // Force reflow to apply class immediately
+            diceCube.style.transition = ''; // Re-enable transition (will pick up CSS value)
+
+            updateDisplay();
+            loadHighScores();
+        }
+
+        /** Handles the 3D dice roll logic. */
+        function rollDice() {
+            // Prevent rolling if game over or already rolling
+            if (isGameOver || isRolling) return;
+
+            // Validate inputs
+            if (!validateWager()) {
+                 setMessage('Wager at least $1!', 'error'); return;
+            }
+            if (selectedNumber === null) {
+                setMessage('Select a number (1-6)!', 'error'); return;
+            }
+
+            // --- Start Roll Sequence ---
+            isRolling = true; // Set flag to block other actions
+            updateDisplay(); // Disable controls
+            setMessage('Rolling...', 'info');
+
+            // Determine the final result *before* animation
+            const finalRoll = Math.floor(Math.random() * 6) + 1;
+
+            // --- Perform the Animation ---
+            // Calculate larger random rotations for more tumbling
+            const randomX = Math.floor(Math.random() * 6 + 3) * 360 + Math.floor(Math.random()*180); // More spins
+            const randomY = Math.floor(Math.random() * 6 + 3) * 360 + Math.floor(Math.random()*180); // More spins
+            const randomZ = Math.floor(Math.random() * 3) * 90; // Some Z rotation
+
+            // Apply the random tumble rotation via inline style (triggers CSS transition)
+            diceCube.style.transform = `translateZ(-2.5rem) rotateX(${randomX}deg) rotateY(${randomY}deg) rotateZ(${randomZ}deg)`;
+
+            // --- After a short delay, set the final position class ---
+            // This delay allows the tumble animation (above) to start visually
+            setTimeout(() => {
+                // Ensure we are still in the intended roll sequence
+                if (!isRolling) return;
+
+                // Remove the inline style transform. The cube will now transition
+                // smoothly to the state defined by the class applied below.
+                diceCube.style.transform = '';
+                // Set the class for the final result face
+                diceCube.className = `cube ${rollToClass[finalRoll]}`;
+
+                // --- Wait for CSS transition to finish using setTimeout ---
+                // This replaces the transitionend listener for potentially better reliability.
+                // The duration MUST match the CSS transition-duration (1.5s = 1500ms).
+                setTimeout(() => {
+                    // Final check: ensure we are still in *this specific* roll sequence
+                    // before processing the result. If isRolling became false due to
+                    // an edge case (like rapid clicks somehow bypassing earlier checks), bail out.
+                    if (!isRolling) return;
+
+                    // --- Determine Win/Loss based on the pre-calculated finalRoll ---
+                    if (finalRoll === selectedNumber) {
+                        currentMoney += currentWager;
+                        setMessage(`Rolled a ${finalRoll}. You won $${currentWager.toLocaleString()}!`, 'win');
+                        if (currentMoney > sessionHighWaterMark) {
+                            sessionHighWaterMark = currentMoney;
+                        }
+                    } else {
+                        currentMoney -= currentWager;
+                        setMessage(`Rolled a ${finalRoll}. You lost $${currentWager.toLocaleString()}.`, 'lose');
+                    }
+
+                    // --- End Roll Sequence ---
+                    isRolling = false; // Clear the flag *after* processing results
+
+                    // Check for Game Over or Update Display
+                    if (currentMoney <= 0) {
+                        currentMoney = 0;
+                        updateDisplay(); // Update display before ending
+                        endGame();
+                    } else {
+                        updateDisplay(); // Re-enable controls and update money
+                    }
+                }, CSS_TRANSITION_DURATION); // Wait for the CSS animation to complete
+
+            }, 150); // Delay before setting final class (allows tumble to start)
+
+        }
+
+        // --- Event Listeners ---
+        numberSelectionContainer.addEventListener('click', handleNumberSelection);
+        rollButton.addEventListener('click', rollDice);
+        newGameButton.addEventListener('click', startNewGame);
+        wagerInput.addEventListener('change', validateWager);
+        wagerInput.addEventListener('input', () => {
+            if(currentMoney > 0) {
+                if (parseInt(wagerInput.value) > currentMoney) wagerInput.value = currentMoney;
+                if (parseInt(wagerInput.value) < 1) wagerInput.value = 1;
+            } else { wagerInput.value = 0; }
+        });
+
+        // --- Initialization ---
+        window.onload = () => {
+            startNewGame();
+        };
+
+    </script>
+</body>
+</html>
