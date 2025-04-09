@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -71,8 +72,6 @@
             position: relative;
             transform-style: preserve-3d;
             -webkit-transform-style: preserve-3d;
-            /* Adjustment: Increased transition duration for more rolling time */
-            transition: transform 1.5s cubic-bezier(0.45, 0.05, 0.55, 0.95); /* Ease in/out */
             transform: translateZ(-2.5rem);
         }
         .face {
@@ -358,81 +357,102 @@
 
         /** Handles the 3D dice roll logic. */
         function rollDice() {
-            // Prevent rolling if game over or already rolling
-            if (isGameOver || isRolling) return;
+            // 1. Validate Inputs (Wager and Number Selection)
+            setMessage('', 'default'); // Clear previous message
+            const wager = validateWager();
+            if (wager === null) return; // Validation failed
 
-            // Validate inputs
-            if (!validateWager()) {
-                 setMessage('Wager at least $1!', 'error'); return;
-            }
             if (selectedNumber === null) {
-                setMessage('Select a number (1-6)!', 'error'); return;
+                setMessage('Pick a number first, genius!', 'error');
+                return;
             }
 
-            // --- Start Roll Sequence ---
-            isRolling = true; // Set flag to block other actions
-            updateDisplay(); // Disable controls
-            setMessage('Rolling...', 'info');
+            // Disable controls during roll
+            rollButton.disabled = true;
+            newGameButton.disabled = true;
+            wagerInput.disabled = true;
+            numberSelectionContainer.querySelectorAll('button').forEach(btn => btn.disabled = true);
 
-            // Determine the final result *before* animation
-            const finalRoll = Math.floor(Math.random() * 6) + 1;
+            // 2. Generate Random Roll
+            const rolledNumber = Math.floor(Math.random() * 6) + 1;
 
-            // --- Perform the Animation ---
-            // Calculate larger random rotations for more tumbling
-            const randomX = Math.floor(Math.random() * 6 + 3) * 360 + Math.floor(Math.random()*180); // More spins
-            const randomY = Math.floor(Math.random() * 6 + 3) * 360 + Math.floor(Math.random()*180); // More spins
-            const randomZ = Math.floor(Math.random() * 3) * 90; // Some Z rotation
+            // 3. Map rolled number to target rotations (adjust if your faces are different)
+            const rotations = {
+                1: { x: 0,    y: 0 },    // Front
+                2: { x: 0,    y: -90 },  // Right (was 90, CSS uses negative for right? Let's match CSS show-right)
+                3: { x: 90, y: 0 },    // Top (was -90, CSS uses positive for top? Let's match show-top)
+                4: { x: -90,  y: 0 },   // Bottom (was 90, CSS uses negative for bottom? Let's match show-bottom)
+                5: { x: 0,    y: 90 }, // Left (was -90, CSS uses positive for left? Let's match show-left)
+                6: { x: 0,    y: -180 }  // Back (was 180, CSS uses negative? Let's match show-back)
+                // Let's double check these rotations vs the .show-* classes later if needed.
+                // Based on .show-* classes: Right=90, Left=-90, Top=-90, Bottom=90. Let's use those.
+                // 1: { x: 0,    y: 0 },    // Front
+                // 2: { x: 0,    y: 90 },   // Right
+                // 3: { x: -90,  y: 0 },    // Top
+                // 4: { x: 90,   y: 0 },    // Bottom
+                // 5: { x: 0,    y: -90 },  // Left
+                // 6: { x: 0,    y: 180 }   // Back
+            };
 
-            // Apply the random tumble rotation via inline style (triggers CSS transition)
-            diceCube.style.transform = `translateZ(-2.5rem) rotateX(${randomX}deg) rotateY(${randomY}deg) rotateZ(${randomZ}deg)`;
+             // Corrected mapping based on .show- classes:
+            const targetRotations = {
+                1: { x: 0,    y: 0 },    // show-front
+                2: { x: 0,    y: 90 },   // show-right
+                3: { x: -90,  y: 0 },    // show-top
+                4: { x: 90,   y: 0 },    // show-bottom
+                5: { x: 0,    y: -90 },  // show-left
+                6: { x: 0,    y: 180 }   // show-back
+            }[rolledNumber];
 
-            // --- After a short delay, set the final position class ---
-            // This delay allows the tumble animation (above) to start visually
-            setTimeout(() => {
-                // Ensure we are still in the intended roll sequence
-                if (!isRolling) return;
+            setMessage('Rolling... No funny business!', 'info');
 
-                // Remove the inline style transform. The cube will now transition
-                // smoothly to the state defined by the class applied below.
-                diceCube.style.transform = '';
-                // Set the class for the final result face
-                diceCube.className = `cube ${rollToClass[finalRoll]}`;
+            // --- GSAP Animation --- 
+            const cube = document.getElementById('diceCube');
+            const duration = 1.8; // How long the chaos lasts
+            const tumbleStrength = 3; // How many extra spins 
 
-                // --- Wait for CSS transition to finish using setTimeout ---
-                // This replaces the transitionend listener for potentially better reliability.
-                // The duration MUST match the CSS transition-duration (1.5s = 1500ms).
-                setTimeout(() => {
-                    // Final check: ensure we are still in *this specific* roll sequence
-                    // before processing the result. If isRolling became false due to
-                    // an edge case (like rapid clicks somehow bypassing earlier checks), bail out.
-                    if (!isRolling) return;
-
-                    // --- Determine Win/Loss based on the pre-calculated finalRoll ---
-                    if (finalRoll === selectedNumber) {
-                        currentMoney += currentWager;
-                        setMessage(`Rolled a ${finalRoll}. You won $${currentWager.toLocaleString()}!`, 'win');
-                        if (currentMoney > sessionHighWaterMark) {
-                            sessionHighWaterMark = currentMoney;
-                        }
+            gsap.to(cube, {
+                duration: duration,
+                rotationX: `+=${gsap.utils.random(360 * tumbleStrength, 360 * (tumbleStrength + 1))} `, // Wild X rotation
+                rotationY: `+=${gsap.utils.random(360 * tumbleStrength, 360 * (tumbleStrength + 1))} `, // Wild Y rotation
+                rotationZ: `+=${gsap.utils.random(360 * tumbleStrength, 360 * (tumbleStrength + 1))} `, // Wild Z rotation
+                // We need to end exactly on the target rotation
+                // Use modifiers or separate tweens/timeline if direct ending doesn't work well with relative spins
+            });
+            
+            // Snap to the final rotation precisely at the end
+            gsap.to(cube, { 
+                duration: duration, // Match duration
+                rotationX: targetRotations.x, 
+                rotationY: targetRotations.y, 
+                rotationZ: 0, // Ensure Z is zeroed out unless part of the face view
+                ease: "elastic.out(1, 0.5)", // Add a little settle/bounce
+                onComplete: () => {
+                    // 4. Determine Outcome
+                    if (rolledNumber === selectedNumber) {
+                        currentMoney += currentWager * 5; // You win 5x wager!
+                        setMessage(`Rolled a ${rolledNumber}! Cha-ching! You win $${currentWager * 5}!`, 'win');
                     } else {
                         currentMoney -= currentWager;
-                        setMessage(`Rolled a ${finalRoll}. You lost $${currentWager.toLocaleString()}.`, 'lose');
+                        setMessage(`Rolled a ${rolledNumber}. Tough luck! You lost $${currentWager}.`, 'lose');
                     }
 
-                    // --- End Roll Sequence ---
-                    isRolling = false; // Clear the flag *after* processing results
+                    // 5. Update Display
+                    updateDisplay();
 
-                    // Check for Game Over or Update Display
+                    // 6. Check for Game Over
                     if (currentMoney <= 0) {
-                        currentMoney = 0;
-                        updateDisplay(); // Update display before ending
+                        setMessage('Busted! Game Over. Better luck next time!', 'gameover');
                         endGame();
                     } else {
-                        updateDisplay(); // Re-enable controls and update money
+                         // Re-enable controls ONLY if game is not over
+                        rollButton.disabled = false;
+                        wagerInput.disabled = false;
+                        numberSelectionContainer.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                        // Keep New Game disabled unless needed
                     }
-                }, CSS_TRANSITION_DURATION); // Wait for the CSS animation to complete
-
-            }, 150); // Delay before setting final class (allows tumble to start)
+                } // end onComplete
+            });
 
         }
 
