@@ -4,12 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home - HEUGS</title>
-    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* You can add custom styles here if Tailwind isn't enough */
+        body { font-family: sans-serif; }
+    </style>
 </head>
-<body>
-    <h1>Welcome to the Home Page!</h1>
-    <p>This is your main website content.</p>
+<body class="bg-gradient-to-br from-gray-100 to-gray-300 min-h-screen flex flex-col items-center justify-center p-8">
 
-    <script src="../js/script.js"></script>
-</body>
+    <div class="bg-white p-10 rounded-lg shadow-xl text-center max-w-md w-full">
+        <h1 class="text-4xl font-bold mb-6 text-gray-800">Welcome Home</h1>
+        <p class="text-gray-600 mb-8">Explore my creations:</p>
+
+        <div class="space-y-4">
+            <a href="./stupid-dice.html" class="block bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 px-6 rounded-md transition duration-200 ease-in-out transform hover:-translate-y-1 shadow-md">
+                Play Stupid Dice
+            </a>
+            <a href="./yoga-for-mystics.html" class="block bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-6 rounded-md transition duration-200 ease-in-out transform hover:-translate-y-1 shadow-md">
+                Read Yoga For Mystics
+            </a>
+        </div>
+    </div>
+
+    </body>
 </html>

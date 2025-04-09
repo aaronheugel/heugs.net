@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Poetry Book - Elegant (Fixed)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;1,300&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Basic styling for the page */
+        body {
+            font-family: 'Lato', sans-serif; /* Base font */
+            background-color: #e8e4dd; /* Softer, parchment-like background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+        }
+
+        /* Container for the book */
+        .flipbook-container {
+            width: 900px; /* Slightly wider for elegance */
+            height: 600px;
+        }
+
+        /* The actual flipbook element */
+        .flipbook {
+            width: 900px;
+            height: 600px;
+            /* Enhanced shadow for more depth */
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            transition: box-shadow 0.3s ease; /* Smooth shadow transition on hover (optional) */
+        }
+        .flipbook:hover {
+             box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+        }
+
+        /* Styling for each page */
+        .flipbook .page {
+            background-color: #fdfdfa; /* Creamy white paper */
+            /* Subtle paper texture using gradient */
+            background-image: linear-gradient(45deg, rgba(0,0,0,0.01) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.01) 75%, rgba(0,0,0,0.01)),
+                              linear-gradient(45deg, rgba(0,0,0,0.01) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.01) 75%, rgba(0,0,0,0.01));
+            background-size: 4px 4px;
+            background-position: 0 0, 2px 2px;
+
+            border: 1px solid #dcdcdc;
+            box-sizing: border-box;
+            padding: 40px 50px; /* More generous padding */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; /* Align content to top */
+            align-items: center;
+            text-align: center;
+            position: relative; /* Crucial for containing absolute positioned children */
+        }
+
+        /* Specific styling for hard covers */
+        .flipbook .hard {
+            background-color: #3a506b; /* Deep blue cover */
+            background-image: linear-gradient(to right, #2e4055, #466081);
+            font-weight: bold;
+            color: #f0f0f0; /* Off-white text on cover */
+            border: 1px solid #2a3a4b;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.3);
+            display: flex; /* Use flexbox for centering cover content */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.4); /* Subtle text shadow */
+            position: relative; /* Also needed if covers ever contain positioned elements */
+        }
+        .flipbook .hard h1 {
+             font-family: 'Playfair Display', serif;
+             font-size: 2.8em;
+             margin-bottom: 15px;
+        }
+         .flipbook .hard p {
+             font-family: 'Lato', sans-serif;
+             font-style: italic;
+             font-size: 1.1em;
+             font-weight: 300;
+         }
+
+
+        /* Styling for the inner shadow div (now placed in HTML) */
+        .page-inner-shadow {
+             position: absolute;
+             top: 0;
+             width: 20px; /* Shadow width */
+             height: 100%;
+             pointer-events: none; /* Allow clicks through */
+             opacity: 0.6;
+             z-index: 1; /* Ensure shadow is above page content bg but below text */
+        }
+        /* Position shadow on the left for odd pages (right side of spread) */
+        .flipbook .odd .page-inner-shadow {
+             left: 0;
+             background: linear-gradient(to right, rgba(0,0,0,0.15), transparent);
+        }
+        /* Position shadow on the right for even pages (left side of spread) */
+         .flipbook .even .page-inner-shadow {
+             right: 0;
+             background: linear-gradient(to left, rgba(0,0,0,0.15), transparent);
+        }
+
+
+        /* Turn.js perspective wrapper */
+        .flipbook .page-wrapper {
+            -webkit-perspective: 2000px;
+            -moz-perspective: 2000px;
+            -ms-perspective: 2000px;
+            perspective: 2000px;
+        }
+
+        /* Styling for page numbers (placeholder div now in HTML) */
+        .page-number {
+            position: absolute;
+            bottom: 15px; /* Position at the bottom */
+            left: 0; /* Start from left */
+            width: 100%; /* Take full width */
+            text-align: center; /* Center the number */
+            font-size: 0.8em;
+            color: #999;
+            pointer-events: none; /* Don't interfere with clicks */
+            z-index: 1; /* Ensure it's visible */
+        }
+
+        /* Elegant poem styling */
+        .poem {
+            text-align: left; /* Left-align poems for readability */
+            width: 100%; /* Take full width of padding box */
+            max-width: 300px; /* Max width for poem lines */
+            margin: 20px auto 0; /* Add some top margin, center the poem block */
+            z-index: 2; /* Ensure poem text is above inner shadow */
+            position: relative; /* Needed for z-index */
+        }
+        .poem h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8em;
+            color: #4a3a3a; /* Darker, warmer brown */
+            margin-bottom: 25px;
+            text-align: center; /* Center title */
+            border-bottom: 1px solid #dcdcdc; /* Subtle separator */
+            padding-bottom: 10px;
+        }
+
+        .poem p {
+            font-family: 'Lato', sans-serif;
+            font-size: 1.0em; /* Slightly smaller for elegance */
+            line-height: 1.8; /* More line spacing */
+            color: #444; /* Dark grey text */
+            margin-bottom: 1.2em; /* Space between stanzas/paragraphs */
+        }
+
+        /* Ensure images fit within the page elegantly */
+        .flipbook .page img {
+            max-width: 85%;
+            max-height: 75%;
+            object-fit: contain;
+            margin-top: 20px; /* Space above image */
+            border: 1px solid #eee; /* Faint border around image */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+            z-index: 2; /* Ensure image is above inner shadow */
+            position: relative; /* Needed for z-index */
+        }
+        .flipbook .page .caption {
+            font-size: 0.8em;
+            font-style: italic;
+            color: #777;
+            margin-top: 10px;
+            z-index: 2; /* Ensure caption is above inner shadow */
+            position: relative; /* Needed for z-index */
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="flipbook-container">
+        <div class="flipbook" id="poetryBook">
+            <div class="hard">
+                <h1>Whispers of Willow Creek</h1>
+                <p>A Collection of Poems</p>
+                 <p style="font-size: 0.8em; font-weight: 300; margin-top: 60px;">(Click or drag a corner to turn)</p>
+            </div>
+            <div class="page">
+                 <div class="page-inner-shadow"></div>
+                 <p style="color: #ccc; font-style: italic;"> </p>
+                 <div class="page-number"></div> </div>
+            <div class="page poem">
+                 <div class="page-inner-shadow"></div>
+                 <h2>The Silent Stream</h2>
+                <p>Where sunlight dapples, cool and deep,<br>The silent stream secrets keep.</p>
+                <p>It winds through meadows, green and wide,<br>With gentle currents as its guide.</p>
+                <p>Reflecting skies of azure hue,<br>Whispering tales both old and new.</p>
+                 <div class="page-number"></div> </div>
+            <div class="page poem">
+                 <div class="page-inner-shadow"></div>
+                 <h2>Moonlit Path</h2>
+                <p>A silver ribbon, softly cast,<br>The moonlit path, shadows vast.</p>
+                <p>It calls the dreamer, late at night,<br>To wander in the pale moonlight.</p>
+                <p>Through sleeping fields and forests deep,<br>Where ancient promises still sleep.</p>
+                 <div class="page-number"></div> </div>
+            <div class="page poem">
+                 <div class="page-inner-shadow"></div>
+                 <h2>Forest's Heart</h2>
+                <p>In ancient woods, where mosses grow,<br>The forest's heart beats soft and low.</p>
+                <p>Tall trees whisper to the breeze,<br>Forgotten tales among the leaves.</p>
+                <p>Sunbeams filter, soft and gold,<br>Stories centuries old.</p>
+                 <div class="page-number"></div> </div>
+             <div class="page">
+                 <div class="page-inner-shadow"></div>
+                 <img src="https://placehold.co/350x450/dde/999?text=Illustration" alt="Placeholder Illustration">
+                 <p class="caption">An illustration might go here.</p>
+                 <div class="page-number"></div> </div>
+            <div class="page">
+                  <div class="page-inner-shadow"></div>
+                  <p style="color: #aaa; font-style: italic;">...</p>
+                 <div class="page-number"></div> </div>
+            <div class="hard">
+                 <p style="font-size: 1.2em;">The End</p>
+            </div>
+        </div>
+        </div>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/turn.js/4/turn.min.js" integrity="sha512-ODE0fsjY/k9FG/zA+1I0+gQoSXrkNDkaPjM3uAHEOKJ0XbQvK/SUI980/NVG+hP7bN/hB3FF/w7xP9qgksb8cw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+            const book = $('#poetryBook');
+            const totalPages = book.turn('pages'); // Get total pages count
+
+            book.turn({
+                width: 900,         // Width
+                height: 600,        // Height
+                elevation: 60,      // Shadow during turn
+                gradients: true,    // Page gradients
+                autoCenter: true,   // Center the book
+                display: 'double',  // Double page display
+                duration: 1000,     // Animation speed
+                when: {
+                    // Removed the 'peel' disabling logic from here
+                    // Let Turn.js handle first/last page boundaries
+                    turned: function(event, page, view) {
+                         // Optional: You could add logic here if needed when a page is turned
+                         // console.log("Turned to page: " + page, "View: " + view.join('-'));
+                    }
+                }
+            });
+
+             // Populate the page number text in the existing divs
+             // Loop through pages, skipping covers (page 1 and last page)
+             for (let i = 2; i < totalPages; i++) {
+                 // Find the page element (Turn.js adds classes like p1, p2, ...)
+                 // Then find the .page-number div inside it
+                 const pageElement = book.find('.p' + i); // Target the div with class .p[number]
+                 if (pageElement.length) {
+                     pageElement.find('.page-number').text(i); // Set the text of the existing div
+                 }
+             }
+        });
+
+        // Handle window resizing - Keep book centered
+        $(window).on('resize', function() {
+            // Note: True fluid resizing often requires more complex JS
+            // (destroying/recreating the book) for fixed-dimension libraries like Turn.js.
+            $('#poetryBook').turn('center');
+        }).trigger('resize'); // Trigger resize once on load
+
+    </script>
+
+</body>
+</html>
